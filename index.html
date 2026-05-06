@@ -2,71 +2,33 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <link rel="icon" href="data:,">
-  <title>Curved VR Only</title>
+  <title>VR Minimal Test</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
   <style>
     body { margin: 0; overflow: hidden; }
 
     #hud {
-      position: fixed; top: 18px; left: 22px;
-      z-index: 999; pointer-events: none;
-      font-family: 'Courier New', monospace;
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      font-family: monospace;
       font-size: 22px;
-      font-weight: bold;
       color: #00ffcc;
-      display: none;
-    }
-
-    #crosshair {
-      position: fixed; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 18px; height: 18px;
-      pointer-events: none;
       z-index: 999;
-    }
-
-    #crosshair::before, #crosshair::after {
-      content: ''; position: absolute;
-      background: #00ffcc;
-    }
-
-    #crosshair::before {
-      width: 2px; height: 100%;
-      left: 50%; top: 0;
-      transform: translateX(-50%);
-    }
-
-    #crosshair::after {
-      height: 2px; width: 100%;
-      top: 50%; left: 0;
-      transform: translateY(-50%);
+      display: none;
     }
 
     #result {
-      position: fixed; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 999;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
       font-family: monospace;
-      font-size: 36px;
+      font-size: 30px;
       color: #ffcc00;
+      display: none;
       text-align: center;
-      display: none;
-    }
-
-    #target-hint {
-      position: fixed; top: 18px; right: 22px;
-      font-family: monospace;
-      color: #ffffffaa;
-      display: none;
-    }
-
-    #target-hint span {
-      display: block;
-      color: #ff4466;
-      font-size: 28px;
-      font-weight: bold;
     }
   </style>
 </head>
@@ -74,177 +36,65 @@
 <body>
 
 <div id="hud">⏱ 00:00.00</div>
-<div id="crosshair"></div>
 <div id="result"></div>
-<div id="target-hint">找到：<span id="targetLabel">--</span></div>
 
-<a-scene timer-logic background="color:#0a0a1a">
+<a-scene background="color:#0a0a1a">
 
-  <!-- rig -->
-  <a-entity position="0 0 0">
-    <a-entity id="cam" camera position="0 2.5 0"
-      look-controls></a-entity>
+  <!-- 必須 cursor（不然 click = 不存在） -->
+  <a-entity cursor="rayOrigin: mouse"
+            raycaster="objects: .clickable"></a-entity>
 
-    <!-- VR controllers only -->
-    <a-entity id="rHand"
-      laser-controls="hand:right"
-      raycaster="objects: .clickable"
-    ></a-entity>
-
-    <a-entity id="lHand"
-      laser-controls="hand:left"
-      raycaster="objects: .clickable"
-    ></a-entity>
+  <!-- camera（VR 可以轉視角） -->
+  <a-entity id="camRig">
+    <a-entity camera
+              look-controls
+              position="0 1.6 0"></a-entity>
   </a-entity>
 
   <!-- START -->
-  <a-entity id="startBtn" position="0 2.5 -2.5">
-    <a-plane id="startPlane"
-      class="clickable"
-      width="1.2" height="0.45"
-      color="#003344"></a-plane>
+  <a-entity id="startBtn" position="0 1.6 -2">
+    <a-plane class="clickable"
+             id="start"
+             width="1.2"
+             height="0.5"
+             color="#003344"></a-plane>
 
     <a-text value="START"
-      align="center"
-      position="0 0 0.1"
-      color="#00ffcc"
-      width="4"></a-text>
+            align="center"
+            position="0 0 0.1"
+            color="#00ffcc"></a-text>
   </a-entity>
-
-  <!-- CYLINDER ROOT -->
-  <a-entity id="arcRoot" visible="false" position="0 2.5 0">
-
-    <a-entity id="cylinderWall"></a-entity>
-
-    <a-entity id="cylinderProxy"
-      class="clickable"></a-entity>
-
-    <!-- VR HUD -->
-    <a-entity id="vrHud" visible="false" position="7 3 0">
-      <a-plane width="5" height="0.7" color="#000"></a-plane>
-
-      <a-text id="vrTimerText"
-        value="⏱ 00:00.00"
-        position="-2 0 0.1"
-        color="#00ffcc"></a-text>
-
-      <a-text id="vrTargetText"
-        value="找: --"
-        position="2 0 0.1"
-        color="#ff4466"></a-text>
-    </a-entity>
-  </a-entity>
-
-  <a-plane rotation="-90 0 0" width="30" height="30"
-    color="#080818"></a-plane>
 
 </a-scene>
 
 <script>
-const ROWS=7, COLS=10;
-let grid=[], target=0;
-let startTime=0;
-let running=false;
-let errors=0;
+let running = false;
+let startTime = 0;
 
-let cylinder, proxy;
-
-const hud=document.getElementById('hud');
-const result=document.getElementById('result');
-const label=document.getElementById('targetLabel');
-const arcRoot=document.getElementById('arcRoot');
-const startBtn=document.getElementById('startBtn');
-const vrHud=document.getElementById('vrHud');
-const vrTimer=document.getElementById('vrTimerText');
-const vrTarget=document.getElementById('vrTargetText');
-
-AFRAME.registerComponent('timer-logic',{
-  tick:function(){
-    if(!running) return;
-
-    const t=format(performance.now()-startTime);
-    hud.textContent="⏱ "+t;
-    vrTimer.setAttribute('value',"⏱ "+t);
-  }
-});
+const hud = document.getElementById("hud");
+const result = document.getElementById("result");
 
 function format(ms){
-  return `${String(Math.floor(ms/60000)).padStart(2,'0')}:${String(Math.floor(ms/1000)%60).padStart(2,'0')}.${String(Math.floor(ms%1000/10)).padStart(2,'0')}`;
+  return new Date(ms).toISOString().substr(14,9);
 }
 
-function makeGrid(){
-  grid=[];
-  for(let i=0;i<ROWS*COLS;i++){
-    grid.push((Math.random()*99).toFixed(2));
+AFRAME.registerComponent("timer",{
+  tick:function(){
+    if(!running) return;
+    hud.textContent = "⏱ " + format(performance.now()-startTime);
   }
-  target=Math.floor(Math.random()*grid.length);
-}
-
-function build(){
-  if(cylinder){
-    cylinder.parentNode.removeChild(cylinder);
-  }
-
-  const geo=new THREE.CylinderGeometry(8,8,5,COLS*10,1,true);
-  const mat=new THREE.MeshBasicMaterial({color:"#00ffcc",wireframe:true});
-  cylinder=new THREE.Mesh(geo,mat);
-
-  arcRoot.object3D.add(cylinder);
-
-  proxy=cylinder;
-}
-
-function start(){
-  makeGrid();
-  build();
-
-  startTime=performance.now();
-  running=true;
-
-  arcRoot.setAttribute('visible',true);
-  startBtn.setAttribute('visible',false);
-
-  hud.style.display='block';
-  document.getElementById('target-hint').style.display='block';
-
-  label.textContent=grid[target];
-
-  vrHud.setAttribute('visible',true);
-}
-
-function finish(){
-  running=false;
-
-  const t=format(performance.now()-startTime);
-
-  result.innerHTML="✔ "+t+"<br>Errors:"+errors;
-  result.style.display="block";
-}
-
-document.querySelector('a-scene').addEventListener('loaded',()=>{
-
-  const ray=new THREE.Raycaster();
-
-  function check(el){
-    el.addEventListener('raycaster-intersected',e=>{
-      el._ray=e.detail.el;
-    });
-
-    el.addEventListener('click',()=>{
-      if(el.id==="startPlane"){
-        start();
-      }
-
-      if(el.id==="cylinderProxy"){
-        finish();
-      }
-    });
-  }
-
-  check(document.getElementById('startPlane'));
-  check(document.getElementById('cylinderProxy'));
-
 });
+
+document.querySelector("a-scene").setAttribute("timer","");
+
+document.getElementById("start").addEventListener("click", () => {
+  running = true;
+  startTime = performance.now();
+
+  hud.style.display = "block";
+  document.getElementById("startBtn").setAttribute("visible", false);
+});
+
 </script>
 
 </body>
